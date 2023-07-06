@@ -235,10 +235,15 @@ async def device_explore(device, stop_event):
 
             # get PFC features
             response = await client.read_gatt_char(POLAR_PFC_FEATURE)
-            pfc_flags = response[1] << 8 | response[0]
-            pfc_available = [ (f.name, bool(pfc_flags&f)) 
-                for f in PFCFlags if f in [PFCFlags.pfc_Broadcast, PFCFlags.pfc_5khz, PFCFlags.pfc_MC, PFCFlags.pfc_ANT, ]]
-            print('[%-30s     ] pfc_flags: %0x pfc_available: %s' % (device_name, pfc_flags, pfc_available), file=sys.stderr)
+            if response is not None and len(response) > 1:
+                pfc_flags = response[1] << 8 | response[0]
+                pfc_available = [ (f.name, bool(pfc_flags&f)) 
+                    for f in PFCFlags if f in [PFCFlags.pfc_Broadcast, PFCFlags.pfc_5khz, PFCFlags.pfc_MC, PFCFlags.pfc_ANT, ]]
+                print('[%-30s     ] pfc_flags: %0x pfc_available: %s' % (device_name, pfc_flags, pfc_available), file=sys.stderr)
+            else:
+                print('[%-30s     ] PFC Feature response not valid: %s' % (device_name, response), file=sys.stderr)
+                return
+
 
 
             # get PMD features
