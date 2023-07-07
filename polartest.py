@@ -170,19 +170,19 @@ def control_notification(sender, data, name=None, msg=None ):
 
 statistics = {}
 
-def pmd_data_notification(sender, data, name=None):
+def pmd_data_notification(sender, data, device_name=None):
     measurement = data[0]
     measurement_name = pmdMeasurementTypes[measurement]
-    if name not in statistics:
-        statistics[name] = {}
-    if measurement_name not in statistics[name]:
-        statistics[name][measurement_name] = 0
-    statistics[name][measurement_name] += 1
+    if device_name not in statistics:
+        statistics[device_name] = {}
+    if measurement_name not in statistics[device_name]:
+        statistics[device_name][measurement_name] = 0
+    statistics[device_name][measurement_name] += 1
     frametype = data[9]
     raw = data[:10]
     ms = int.from_bytes(data[1:8], byteorder='little', signed=False)
     print("[%-30s %4s] %3d %02x len: %s" % 
-        (name, measurement_name, statistics[name][measurement_name], frametype,  len(data)), file=sys.stderr)
+        (device_name, measurement_name, statistics[device_name][measurement_name], frametype,  len(data)), file=sys.stderr)
 
 async def write_gatt_char(client, name, service, cp, command, msg ):
     print('[%-30s %4s] %s %s' % (name, service, bytes2str(command), msg), file=sys.stderr)
@@ -202,13 +202,11 @@ async def device_explore(device, stop_event):
         async with BleakClient(device) as client:
 
             # The Linux Bleak backend provides the name differently than Windows
+            device_name = 'unknown'
             if platform.system() == 'Linux':
                 device_name = client._properties['Name']
             else:
-                for service in client.services:
-                    for char in service.characteristics:
-                        if uuidstr_to_str(char.uuid) == 'Device Name':
-                            device_name = await client.read_gatt_char(char)
+                device_name = device.name
 
             print('[%-30s     ] Client Connected' % (device_name), file=sys.stderr)
 
@@ -256,7 +254,7 @@ async def device_explore(device, stop_event):
             try:
                 await client.start_notify(POLAR_PFC_CP, partial(control_notification, name=device_name, msg='PFC_CP'))
                 await client.start_notify(POLAR_PMD_CP, partial(control_notification, name=device_name, msg='PMD_CP'))
-                await client.start_notify(POLAR_PMD_DATA, partial(pmd_data_notification, name=device_name, ))
+                await client.start_notify(POLAR_PMD_DATA, partial(pmd_data_notification, device_name=device_name, ))
             except BleakError as e:
                 print('[%-30s     ] BleakDBusError %s ...' % (device_name, e), file=sys.stderr)
                 if platform.system() == 'Linux':
@@ -338,7 +336,7 @@ async def main(wanted_name):
 
 
     def callback(dev, ad):
-        if wanted_name.lower() in dev.name.lower() and dev.name not in tasks:
+        if dev.name is not None and wanted_name.lower() in dev.name.lower() and dev.name not in tasks:
             tasks[dev.name] = asyncio.create_task(device_explore(dev, stop_event))
 
     try:
