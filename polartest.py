@@ -198,15 +198,19 @@ async def write_gatt_char(client, name, service, cp, command, msg ):
             print('[%-30s     ] You may need to restart Linux Bluetooth!' % (name), file=sys.stderr)
 
 async def device_explore(device, stop_event):
+    print('[%-30s     ] Connecting' % (device.name), file=sys.stderr)
     try:
         async with BleakClient(device) as client:
 
+            print('[%-30s     ] Client Connected' % (device.name), file=sys.stderr)
+
             # The Linux Bleak backend provides the name differently than Windows
-            device_name = 'unknown'
-            if platform.system() == 'Linux':
-                device_name = client._properties['Name']
-            else:
-                device_name = device.name
+            #device_name = 'unknown'
+            #if platform.system() == 'Linux':
+            #    device_name = client._properties['Name']
+            #else:
+            #    device_name = device.name
+            device_name = device.name
 
             print('[%-30s     ] Client Connected' % (device_name), file=sys.stderr)
 
@@ -336,7 +340,11 @@ async def main(wanted_name):
 
 
     def callback(dev, ad):
+        #print('[%-35s] callback dev: %s' % ('BleakScanner', dir(dev), ), file=sys.stderr)
+        #print('[%-35s] callback tasks: %s' % ('BleakScanner', tasks), file=sys.stderr)
+
         if dev.name is not None and wanted_name.lower() in dev.name.lower() and dev.name not in tasks:
+            print('[%-35s] founnd %s' % ('BleakScanner', dev.name, ), file=sys.stderr)
             tasks[dev.name] = asyncio.create_task(device_explore(dev, stop_event))
 
     try:
